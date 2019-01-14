@@ -1,15 +1,17 @@
-# worldnuqumoritytransporters core
+# Wnt core
 
-This is a library used in [wnt](https://wnt.jp) clients.  Never used directly.  Some of the clients that require the library:
+This is a library used in [Wnt](https://worldnuqumoritytransporters.com) clients.  Never used directly.  Some of the clients that require the library:
 
-* [Byteball](../../../wnt) - GUI wallet for Mac, Windows, Linux, iOS, and Android.
-* [Headless wnt](../../../wnt-headless) - headless wallet, primarily for server side use.
-* [wnt Relay](../../../wnt-relay) - relay node for wnt network.  It doesn't hold any private keys.
-* [wnt Hub](../../../wnt-hub) - hub for wnt network.  Includes the relay, plus can store and forward end-to-end encrypted messages among devices on the wnt network.
+* [Wnt](../../../wnt) - GUI wallet for Mac, Windows, Linux, iOS, and Android.
+* [Headless Wnt](../../../wnt-headless) - headless wallet, primarily for server side use.
+* [Wnt Relay](../../../wnt-relay) - relay node for Wnt network.  It doesn't hold any private keys.
+* [Wnt Hub](../../../wnt-hub) - hub for Wnt network.  Includes the relay, plus can store and forward end-to-end encrypted messages among devices on the Wnt network.
 
 ## Developer guides
 
-See the [wiki](https://github.com/worldnuqumoritytransporters/wntcore/wiki/wnt-Developer-Guides).  Many of the features are not documented yet, see other [wnt repositories](https://github.com/wnt) as samples, for APIs see the `exports` of node.js modules.
+See the [Developer resources site](https://developer.worldnuqumoritytransporters.com).  Also, you'll find loads of examples in other [wnt repositories](https://github.com/worldnuqumoritytransporters). For internal APIs, see the `exports` of node.js modules.
+
+This repo is normally used as a library and not installed on its own, but if you are contributing to this project then fork, `git pull`, `npm install`, and `npm test` to run the tests.
 
 ## Configuring
 
@@ -31,7 +33,7 @@ The port to listen on.  If you don't want to accept incoming connections at all,
 
 #### conf.storage
 
-Storage backend -- mysql or sqlite, the default is sqlite.  If sqlite, the database files are stored in the app data folder.  If mysql, you need to also initialize the database with [byteball.sql](byteball.sql) and set connection params, e.g. in conf.json in the app data folder:
+Storage backend -- mysql or sqlite, the default is sqlite.  If sqlite, the database files are stored in the app data folder.  If mysql, you need to also initialize the database with [wnt.sql](wnt.sql) and set connection params, e.g. in conf.json in the app data folder:
 
 ```json
 {
@@ -52,7 +54,7 @@ Work as light client (`true`) or full node (`false`).  The default is full clien
 
 #### conf.bServeAsHub
 
-Whether to serve as hub on the wnt network (store and forward e2e-encrypted messages for devices that connect to your hub).  The default is `false`.
+Whether to serve as hub on the Wnt network (store and forward e2e-encrypted messages for devices that connect to your hub).  The default is `false`.
 
 #### conf.myUrl
 
@@ -72,16 +74,26 @@ To lower disk load and increase sync speed, you can optionally disable flushing 
 
 ## Accepting incoming connections
 
-wnt network works over secure WebSocket protocol wss://.  To accept incoming connections, you'll need a valid TLS certificate (you can get a free one from [letsencrypt.org](https://letsencrypt.org)) and a domain name (you can get a free domain from [Freenom](http://www.freenom.com/)).  Then you accept connections on standard port 443 and proxy them to your locally running wnt daemon.
+Wnt network works over secure WebSocket protocol wss://.  To accept incoming connections, you'll need a valid TLS certificate (you can get a free one from [letsencrypt.org](https://letsencrypt.org)) and a domain name (you can get a free domain from [Freenom](http://www.freenom.com/)).  Then you accept connections on standard port 443 and proxy them to your locally running wnt daemon.
 
-This is an example configuration for nginx to accept websocket connections at wss://byteball.one/bb and forward them to locally running daemon that listens on port 6611:
+This is an example configuration for nginx to accept websocket connections at wss://wnt.one/bb and forward them to locally running daemon that listens on port 6611:
+
+If your server doesn't support IPv6, comment or delete the two lines containing [::] or nginx won't start
 
 ```nginx
 server {
-	listen 80;
-	listen [::]:80;
-	if ($http_x_forwarded_proto = 'http') {
-		return 301 https://$server_name$request_uri;
+	listen 80 default_server;
+	listen [::]:80 default_server;
+	listen 443 ssl;
+	listen [::]:443 ssl;
+	ssl_certificate "/etc/letsencrypt/live/wnt.one/fullchain.pem";
+	ssl_certificate_key "/etc/letsencrypt/live/wnt.one/privkey.pem";
+
+	if ($host != "wnt.one") {
+		rewrite ^(.*)$ https://wnt.one$1 permanent;
+	}
+	if ($https != "on") {
+		rewrite ^(.*)$ https://wnt.one$1 permanent;
 	}
 
 	location = /bb {
@@ -98,4 +110,15 @@ server {
 }
 ```
 
+By default Node limits itself to 1.76GB the RAM it uses. If you accept incoming connections, you will likely reach this limit and get this error after some time:
+```
+FATAL ERROR: CALL_AND_RETRY_LAST Allocation failed - JavaScript heap out of memory
+1: node::Abort() [node]
+...
+...
+12: 0x3c0f805c7567
+Out of memory
+```
+To prevent this, increase the RAM limit by adding `--max_old_space_size=<size>` to the launch command where size is the amount in MB you want to allocate.
 
+For example `--max-old-space-size=4096`, if your server has at least 4GB available.

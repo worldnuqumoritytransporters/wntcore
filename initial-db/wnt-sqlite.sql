@@ -204,7 +204,7 @@ CREATE TABLE polls (
 CREATE TABLE poll_choices (
 	unit CHAR(44) NOT NULL,
 	choice_index TINYINT NOT NULL,
-	choice VARCHAR(32) NOT NULL,
+	choice VARCHAR(64) NOT NULL,
 	PRIMARY KEY (unit, choice_index),
 	UNIQUE  (unit, choice),
 	FOREIGN KEY (unit) REFERENCES polls(unit)
@@ -214,7 +214,7 @@ CREATE TABLE votes (
 	unit CHAR(44) NOT NULL,
 	message_index TINYINT NOT NULL,
 	poll_unit CHAR(44) NOT NULL,
-	choice VARCHAR(32) NOT NULL,
+	choice VARCHAR(64) NOT NULL,
 	PRIMARY KEY (unit, message_index),
 	UNIQUE  (unit, choice),
 	CONSTRAINT votesByChoice FOREIGN KEY (poll_unit, choice) REFERENCES poll_choices(unit, choice),
@@ -662,6 +662,7 @@ DROP TABLE IF EXISTS paid_witness_events;
 CREATE TABLE IF NOT EXISTS push_registrations (
     registrationId TEXT, 
     device_address TEXT NOT NULL,
+    platform TEXT NOT NULL,
     PRIMARY KEY (device_address)
 );
 

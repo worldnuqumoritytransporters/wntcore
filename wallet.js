@@ -334,16 +334,23 @@ function handleMessageFromHub(ws, json, device_pubkey, bIndirectCorrespondent, c
 						return callbacks.ifError("no such payload hash in the messages");
 				}
 			}
-			var arrMessages = objUnit.messages;
-			if (!Array.isArray(arrMessages))
-				return callbacks.ifError("bad message type");
-			for (var i=0; i<arrMessages.length; i++){
-				if (arrMessages[i].payload === undefined)
-					continue;
-				var calculated_payload_hash = objectHash.getBase64Hash(arrMessages[i].payload);
-				if (arrMessages[i].payload_hash !== calculated_payload_hash)
-					return callbacks.ifError("payload hash does not match");
+			if (objUnit.messages){
+				var arrMessages = objUnit.messages;
+				if (!Array.isArray(arrMessages))
+					return callbacks.ifError("bad type of messages");
+				for (var i=0; i<arrMessages.length; i++){
+					if (arrMessages[i].payload === undefined)
+						continue;
+					var calculated_payload_hash = objectHash.getBase64Hash(arrMessages[i].payload);
+					if (arrMessages[i].payload_hash !== calculated_payload_hash)
+						return callbacks.ifError("payload hash does not match");
+				}
 			}
+			else if (objUnit.signed_message){
+				// ok
+			}
+			else
+				return callbacks.ifError("neither messages nor signed_message");
 			// findAddress handles both types of addresses
 			findAddress(body.address, body.signing_path, {
 				ifError: callbacks.ifError,
@@ -1405,7 +1412,7 @@ function sendMultiPayment(opts, handleResult)
 
 			var signer = getSigner(opts, arrSigningDeviceAddresses, signWithLocalPrivateKey);
 
-			// if we have any output with text addresses / not byteball addresses (e.g. email) - generate new addresses and return them
+			// if we have any output with text addresses / not wnt addresses (e.g. email) - generate new addresses and return them
 			var assocMnemonics = {}; // return all generated wallet mnemonics to caller in callback
 			var assocPaymentsByEmail = {}; // wallet mnemonics to send by emails
 			var assocAddresses = {};
@@ -1709,8 +1716,8 @@ function sendTextcoinEmail(email, subject, amount, asset, mnemonic){
 	replaceInTextcoinTemplate({amount: amount, asset: asset, mnemonic: mnemonic, usd_amount_str: usd_amount_str}, function(html, text){
 		mail.sendmail({
 			to: email,
-			from: conf.from_email || "noreply@byteball.org",
-			subject: subject || "Byteball user beamed you money",
+			from: conf.from_email || "noreply@worldnuqumoritytransporters.com",
+			subject: subject || "Wnt user beamed you money",
 			body: text,
 			htmlBody: html
 		});
@@ -1728,7 +1735,7 @@ function replaceInTextcoinTemplate(params, handleText){
 		});
 		template = template.replace(/\{\{\w*\}\}/g, '');
 
-		var text = "Here is your link to receive " + params.amount + " " + params.asset + params.usd_amount_str + ": https://byteball.org/#textcoin?" + params.mnemonic;
+		var text = "Here is your link to receive " + params.amount + " " + params.asset + params.usd_amount_str + ": https://worldnuqumoritytransporters.com/#textcoin?" + params.mnemonic;
 		handleText(template, text);
 	});
 }

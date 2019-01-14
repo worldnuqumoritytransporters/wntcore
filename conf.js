@@ -59,11 +59,11 @@ exports.database = {};
 
 
 /*
-There are 3 ways to customize conf in modules that use byteballcore lib:
+There are 3 ways to customize conf in modules that use wntcore lib:
 1. drop a custom conf.js into the project root.  The code below will find it and merge.  Will not work under browserify.
 2. drop a custom conf.json into the app's data dir inside the user's home dir.  The code below will find it and merge.  Will not work under browserify.
 3. require() this conf and modify it:
-var conf = require('byteballcore/conf.js');
+var conf = require('wntcore/conf.js');
 conf.custom_property = 'custom value';
 You should do it as early as possible during your app's startup.
 The later require()s of this conf will see the modified version.
@@ -106,11 +106,11 @@ if (typeof window === 'undefined' || !window.cordova){ // desktop
 if (exports.storage === 'mysql'){
 	exports.database.max_connections = exports.database.max_connections || 30;
 	exports.database.host = exports.database.host || 'localhost';
-	exports.database.name = exports.database.name || 'byteball';
-	exports.database.user = exports.database.user || 'byteball';
+	exports.database.name = exports.database.name || 'wnt';
+	exports.database.user = exports.database.user || 'wnt';
 }
 else if (exports.storage === 'sqlite'){
 	exports.database.max_connections = exports.database.max_connections || 1;
-	exports.database.filename = exports.database.filename || (exports.bLight ? 'byteball-light.sqlite' : 'byteball.sqlite');
+	exports.database.filename = exports.database.filename || (exports.bLight ? 'wnt-light.sqlite' : 'wnt.sqlite');
 }
 

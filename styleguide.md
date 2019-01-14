@@ -1,6 +1,6 @@
 # Style Guide
 
-This document defines the code style rules for all byteball projects, i.e. all projects under https://github.com/byteball, not just this repo byteballcore.
+This document defines the code style rules for all wnt projects, i.e. all projects under https://github.com/worldnuqumoritytransporters, not just this repo wntcore.
 
 ## General principle
 

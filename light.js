@@ -270,7 +270,7 @@ function prepareHistory(historyRequest, callbacks){
 }
 
 
-function processHistory(objResponse, callbacks){
+function processHistory(objResponse, arrWitnesses, callbacks){
 	if (!("joints" in objResponse)) // nothing found
 		return callbacks.ifOk(false);
 	if (!ValidationUtils.isNonemptyArray(objResponse.unstable_mc_joints))
@@ -285,7 +285,7 @@ function processHistory(objResponse, callbacks){
 		objResponse.proofchain_balls = [];
 
 	witnessProof.processWitnessProof(
-		objResponse.unstable_mc_joints, objResponse.witness_change_and_definition_joints, false, 
+		objResponse.unstable_mc_joints, objResponse.witness_change_and_definition_joints, false, arrWitnesses,
 		function(err, arrLastBallUnits, assocLastBallByLastBallUnit){
 			
 			if (err)
@@ -526,25 +526,28 @@ function prepareParentsAndLastBallAndWitnessListUnit(arrWitnesses, callbacks){
 	storage.determineIfWitnessAddressDefinitionsHaveReferences(db, arrWitnesses, function(bWithReferences){
 		if (bWithReferences)
 			return callbacks.ifError("some witnesses have references in their addresses");
-		parentComposer.pickParentUnitsAndLastBall(
-			db, 
-			arrWitnesses, 
-			function(err, arrParentUnits, last_stable_mc_ball, last_stable_mc_ball_unit, last_stable_mc_ball_mci){
-				if (err)
-					return callbacks.ifError("unable to find parents: "+err);
-				var objResponse = {
-					parent_units: arrParentUnits,
-					last_stable_mc_ball: last_stable_mc_ball,
-					last_stable_mc_ball_unit: last_stable_mc_ball_unit,
-					last_stable_mc_ball_mci: last_stable_mc_ball_mci
-				};
-				storage.findWitnessListUnit(db, arrWitnesses, last_stable_mc_ball_mci, function(witness_list_unit){
-					if (witness_list_unit)
-						objResponse.witness_list_unit = witness_list_unit;
-					callbacks.ifOk(objResponse);
-				});
-			}
-		);
+		db.takeConnectionFromPool(function(conn){
+			parentComposer.pickParentUnitsAndLastBall(
+				conn,
+				arrWitnesses,
+				function(err, arrParentUnits, last_stable_mc_ball, last_stable_mc_ball_unit, last_stable_mc_ball_mci){
+					conn.release();
+					if (err)
+						return callbacks.ifError("unable to find parents: "+err);
+					var objResponse = {
+						parent_units: arrParentUnits,
+						last_stable_mc_ball: last_stable_mc_ball,
+						last_stable_mc_ball_unit: last_stable_mc_ball_unit,
+						last_stable_mc_ball_mci: last_stable_mc_ball_mci
+					};
+					storage.findWitnessListUnit(db, arrWitnesses, last_stable_mc_ball_mci, function(witness_list_unit){
+						if (witness_list_unit)
+							objResponse.witness_list_unit = witness_list_unit;
+						callbacks.ifOk(objResponse);
+					});
+				}
+			);
+		});
 	});
 }
 
@@ -657,7 +660,7 @@ function buildPath(objLaterJoint, objEarlierJoint, arrChain, onDone){
 			throw Error("mci undefined? unit="+objJoint.unit.unit+", mci="+objJoint.unit.main_chain_index+", earlier="+objEarlierJoint.unit.unit+", later="+objLaterJoint.unit.unit);
 		db.query(
 			"SELECT unit FROM parenthoods JOIN units ON parent_unit=unit \n\
-			WHERE child_unit=? AND main_chain_index"+(objJoint.unit.main_chain_index === null ? ' IS NULL' : '='+objJoint.unit.main_chain_index), 
+			WHERE child_unit=?",// AND main_chain_index"+(objJoint.unit.main_chain_index === null ? ' IS NULL' : '='+objJoint.unit.main_chain_index), 
 			[objJoint.unit.unit],
 			function(rows){
 				if (rows.length === 0)

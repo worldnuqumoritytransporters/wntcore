@@ -2632,24 +2632,30 @@ function handleRequest(ws, tag, command, params){
 			});
 			break;
 			
-	   case 'light/get_parents_and_last_ball_and_witness_list_unit':
+	    case 'light/get_parents_and_last_ball_and_witness_list_unit':
 			if (conf.bLight)
 				return sendErrorResponse(ws, tag, "I'm light myself, can't serve you");
 			if (ws.bOutbound)
 				return sendErrorResponse(ws, tag, "light clients have to be inbound");
 			if (!params)
 				return sendErrorResponse(ws, tag, "no params in get_parents_and_last_ball_and_witness_list_unit");
-			light.prepareParentsAndLastBallAndWitnessListUnit(params.witnesses, {
-				ifError: function(err){
-					sendErrorResponse(ws, tag, err);
-				},
-				ifOk: function(objResponse){
-					sendResponse(ws, tag, objResponse);
-				}
-			});
+            var callbacks = {
+                ifError: function (err) {
+                    sendErrorResponse(ws, tag, err);
+                },
+                ifOk: function (objResponse) {
+                    sendResponse(ws, tag, objResponse);
+                }
+            }
+            if (params.witnesses)
+                light.prepareParentsAndLastBallAndWitnessListUnit(params.witnesses, callbacks);
+            else
+                myWitnesses.readMyWitnesses(function(arrWitnesses){
+                    light.prepareParentsAndLastBallAndWitnessListUnit(arrWitnesses, callbacks);
+                });
 			break;
 
-	   case 'light/get_attestation':
+	    case 'light/get_attestation':
 			// find an attestation posted by the given attestor and attesting field=value
 			if (conf.bLight)
 				return sendErrorResponse(ws, tag, "I'm light myself, can't serve you");

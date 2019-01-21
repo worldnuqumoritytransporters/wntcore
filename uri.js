@@ -10,8 +10,13 @@ function parseUri(uri, callbacks){
 	var protocol = conf.program || 'wnt';
 	var re = new RegExp('^'+protocol+':(.+)$', 'i');
 	var arrMatches = uri.match(re);
-	if (!arrMatches)
-		return callbacks.ifError("no "+protocol+" prefix");
+    if (!arrMatches){ // try with obyte
+        var oprotocol = protocol.replace(/wnt/i, 'wnt');
+        re = new RegExp('^'+oprotocol+':(.+)$', 'i');
+        arrMatches = uri.match(re);
+        if (!arrMatches)
+            return callbacks.ifError("no "+protocol+" or "+oprotocol+" prefix");
+    }
 	var value = arrMatches[1];
 	var objRequest = {};
 	

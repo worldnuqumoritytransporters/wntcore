@@ -1449,9 +1449,6 @@ function initBlockedPeers(){
 	);
 }
 
-if (!conf.bLight)
-	setInterval(function(){flushEvents(true)}, 1000 * 60);
-
 
 function findAndHandleJointsThatAreReady(unit){
 	joint_storage.readDependentJointsThatAreReady(unit, handleSavedJoint);
@@ -2905,6 +2902,23 @@ function onWebsocketMessage(message) {
 	}
 }
 
+// @see https://www.npmjs.com/package/ws#multiple-servers-sharing-a-single-https-server
+function handleUpgradeConnection(incomingRequest, socket, head) {
+    if (!(wss instanceof WebSocketServer)) throw new Error('reuse port and upgrade connection in light node is not supported')
+
+    if (incomingRequest instanceof require('net').Server && !socket && !head) {
+        incomingRequest.on('upgrade', function(_request, _socket, _head) {
+            upgrade(_request, _socket, _head)
+        })
+    } else upgrade(incomingRequest, socket, head)
+
+    function upgrade($request, $socket, $head) {
+        wss.handleUpgrade($request, $socket, $head, function(ws) {
+            wss.emit('connection', ws, request);
+        })
+    }
+}
+
 function startAcceptingConnections(){
 	db.query("DELETE FROM watched_light_addresses");
 	db.query("DELETE FROM watched_light_units");
@@ -3004,7 +3018,8 @@ function startRelay(){
 	}
 	// purge peer_events every 6 hours, removing those older than 0.5 days ago.
 	setInterval(purgePeerEvents, 6*60*60*1000);
-	
+    setInterval(function(){flushEvents(true)}, 1000 * 60);
+    
 	// request needed joints that were not received during the previous session
 	rerequestLostJoints();
 	setInterval(rerequestLostJoints, 8*1000);
@@ -3045,7 +3060,9 @@ function isCatchingUp(){
 	return bCatchingUp;
 }
 
-start();
+if (!conf.explicitStart) {
+    start();
+}
 
 exports.start = start;
 exports.postJointToLightVendor = postJointToLightVendor;

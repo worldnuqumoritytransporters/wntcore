@@ -10,7 +10,7 @@ function parseUri(uri, callbacks){
 	var protocol = conf.program || 'wnt';
 	var re = new RegExp('^'+protocol+':(.+)$', 'i');
 	var arrMatches = uri.match(re);
-    if (!arrMatches){ // try with obyte
+    if (!arrMatches){ // try with wnt
         var oprotocol = protocol.replace(/wnt/i, 'wnt');
         re = new RegExp('^'+oprotocol+':(.+)$', 'i');
         arrMatches = uri.match(re);

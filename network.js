@@ -918,7 +918,6 @@ function forwardJoint(ws, objJoint){
 
 function handleJoint(ws, objJoint, bSaved, callbacks){
 	var unit = objJoint.unit.unit;
-
 	if (assocUnitsInWork[unit])
 		return callbacks.ifUnitInWork();
 	assocUnitsInWork[unit] = true;
@@ -1633,23 +1632,23 @@ function handleHashTree(ws, request, response){
 }
 
 function haveManyUnhandledHashTreeBalls(){
-    var count = 0;
-    for (var ball in storage.assocHashTreeUnitsByBall){
-        var unit = storage.assocHashTreeUnitsByBall[ball];
-        if (!storage.assocUnstableUnits[unit]){
-            count++;
-            if (count > 30)
-                return true;
-        }
-    }
-    return false;
+	var count = 0;
+	for (var ball in storage.assocHashTreeUnitsByBall){
+		var unit = storage.assocHashTreeUnitsByBall[ball];
+		if (!storage.assocUnstableUnits[unit]){
+			count++;
+			if (count > 30)
+				return true;
+		}
+	}
+	return false;
 }
 
 function waitTillHashTreeFullyProcessedAndRequestNext(ws){
 	setTimeout(function(){
 	//	db.query("SELECT COUNT(*) AS count FROM hash_tree_balls LEFT JOIN units USING(unit) WHERE units.unit IS NULL", function(rows){
-        //	var count = Object.keys(storage.assocHashTreeUnitsByBall).length;
-        	if (!haveManyUnhandledHashTreeBalls()){
+		//	var count = Object.keys(storage.assocHashTreeUnitsByBall).length;
+			if (!haveManyUnhandledHashTreeBalls()){
 				findNextPeer(ws, function(next_ws){
 					requestNextHashTree(next_ws);
 				});
@@ -2642,30 +2641,30 @@ function handleRequest(ws, tag, command, params){
 			});
 			break;
 			
-	    case 'light/get_parents_and_last_ball_and_witness_list_unit':
+		case 'light/get_parents_and_last_ball_and_witness_list_unit':
 			if (conf.bLight)
 				return sendErrorResponse(ws, tag, "I'm light myself, can't serve you");
 			if (ws.bOutbound)
 				return sendErrorResponse(ws, tag, "light clients have to be inbound");
 			if (!params)
 				return sendErrorResponse(ws, tag, "no params in get_parents_and_last_ball_and_witness_list_unit");
-            var callbacks = {
-                ifError: function (err) {
-                    sendErrorResponse(ws, tag, err);
-                },
-                ifOk: function (objResponse) {
-                    sendResponse(ws, tag, objResponse);
-                }
-            }
-            if (params.witnesses)
-                light.prepareParentsAndLastBallAndWitnessListUnit(params.witnesses, callbacks);
-            else
-                myWitnesses.readMyWitnesses(function(arrWitnesses){
-                    light.prepareParentsAndLastBallAndWitnessListUnit(arrWitnesses, callbacks);
-                });
+			var callbacks = {
+				ifError: function(err){
+					sendErrorResponse(ws, tag, err);
+				},
+				ifOk: function(objResponse){
+					sendResponse(ws, tag, objResponse);
+				}
+			}
+			if (params.witnesses)
+				light.prepareParentsAndLastBallAndWitnessListUnit(params.witnesses, callbacks);
+			else
+				myWitnesses.readMyWitnesses(function(arrWitnesses){
+					light.prepareParentsAndLastBallAndWitnessListUnit(arrWitnesses, callbacks);
+				});
 			break;
 
-	    case 'light/get_attestation':
+	   case 'light/get_attestation':
 			// find an attestation posted by the given attestor and attesting field=value
 			if (conf.bLight)
 				return sendErrorResponse(ws, tag, "I'm light myself, can't serve you");
@@ -2787,17 +2786,18 @@ function handleRequest(ws, tag, command, params){
 			if (addresses.length > 100)
 				return sendErrorResponse(ws, tag, "too many addresses");
 			db.query(
-				"SELECT address, asset, is_stable, SUM(amount) AS balance \n\
+				"SELECT address, asset, is_stable, SUM(amount) AS balance, COUNT(*) AS outputs_count \n\
 				FROM outputs JOIN units USING(unit) \n\
 				WHERE is_spent=0 AND address IN(?) AND sequence='good' \n\
 				GROUP BY address, asset, is_stable", [addresses], function(rows) {
 					var balances = {};
 					rows.forEach(function(row) {
 						if (!balances[row.address])
-							balances[row.address] = { base: { stable: 0, pending: 0 }};
+							balances[row.address] = { base: { stable: 0, pending: 0, stable_outputs_count: 0, pending_outputs_count: 0}};
 						if (row.asset && !balances[row.address][row.asset])
-							balances[row.address][row.asset] = { stable: 0, pending: 0 };
+							balances[row.address][row.asset] = { stable: 0, pending: 0, stable_outputs_count: 0, pending_outputs_count: 0};
 						balances[row.address][row.asset || 'base'][row.is_stable ? 'stable' : 'pending'] = row.balance;
+						balances[row.address][row.asset || 'base'][row.is_stable ? 'stable_outputs_count' : 'pending_outputs_count'] = row.outputs_count;
 					});
 					sendResponse(ws, tag, balances);
 				}
@@ -2904,19 +2904,19 @@ function onWebsocketMessage(message) {
 
 // @see https://www.npmjs.com/package/ws#multiple-servers-sharing-a-single-https-server
 function handleUpgradeConnection(incomingRequest, socket, head) {
-    if (!(wss instanceof WebSocketServer)) throw new Error('reuse port and upgrade connection in light node is not supported')
+	if (!(wss instanceof WebSocketServer)) throw new Error('reuse port and upgrade connection in light node is not supported')
 
-    if (incomingRequest instanceof require('net').Server && !socket && !head) {
-        incomingRequest.on('upgrade', function(_request, _socket, _head) {
-            upgrade(_request, _socket, _head)
-        })
-    } else upgrade(incomingRequest, socket, head)
+	if (incomingRequest instanceof require('net').Server && !socket && !head) {
+		incomingRequest.on('upgrade', function(_request, _socket, _head) {
+			upgrade(_request, _socket, _head)
+		})
+	} else upgrade(incomingRequest, socket, head)
 
-    function upgrade($request, $socket, $head) {
-        wss.handleUpgrade($request, $socket, $head, function(ws) {
-            wss.emit('connection', ws, request);
-        })
-    }
+	function upgrade($request, $socket, $head) {
+		wss.handleUpgrade($request, $socket, $head, function(ws) {
+			wss.emit('connection', ws, request);
+		})
+	}
 }
 
 function startAcceptingConnections(){
@@ -2926,7 +2926,7 @@ function startAcceptingConnections(){
 	setInterval(unblockPeers, 10*60*1000);
 	initBlockedPeers();
 	// listen for new connections
-	wss = new WebSocketServer({ port: conf.port });
+	wss = new WebSocketServer(conf.portReuse ? { noServer: true } : { port: conf.port });
 	wss.on('connection', function(ws) {
 		var ip = ws.upgradeReq.connection.remoteAddress;
 		if (!ip){
@@ -3018,8 +3018,8 @@ function startRelay(){
 	}
 	// purge peer_events every 6 hours, removing those older than 0.5 days ago.
 	setInterval(purgePeerEvents, 6*60*60*1000);
-    setInterval(function(){flushEvents(true)}, 1000 * 60);
-    
+	setInterval(function(){flushEvents(true)}, 1000 * 60);
+	
 	// request needed joints that were not received during the previous session
 	rerequestLostJoints();
 	setInterval(rerequestLostJoints, 8*1000);
@@ -3061,7 +3061,7 @@ function isCatchingUp(){
 }
 
 if (!conf.explicitStart) {
-    start();
+	start();
 }
 
 exports.start = start;
@@ -3076,6 +3076,7 @@ exports.sendRequest = sendRequest;
 exports.sendResponse = sendResponse;
 exports.findOutboundPeerOrConnect = findOutboundPeerOrConnect;
 exports.handleOnlineJoint = handleOnlineJoint;
+exports.handleUpgradeConnection = handleUpgradeConnection
 
 exports.handleOnlinePrivatePayment = handleOnlinePrivatePayment;
 exports.requestUnfinishedPastUnitsOfPrivateChains = requestUnfinishedPastUnitsOfPrivateChains;

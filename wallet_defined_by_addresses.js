@@ -50,53 +50,53 @@ function sendNewSharedAddress(device_address, address, arrDefinition, assocSigne
 
 // when a peer has lost shared address definitions after a wallet recovery, we can resend them
 function sendToPeerAllSharedAddressesHavingUnspentOutputs(device_address, asset, callbacks){
-    var asset_filter = !asset || asset == "base" ? " AND outputs.asset IS NULL " : " AND outputs.asset='"+asset+"'";
-    db.query(
-        "SELECT DISTINCT shared_address FROM shared_address_signing_paths CROSS JOIN outputs ON shared_address_signing_paths.shared_address=outputs.address\n\
-         WHERE device_address=? AND outputs.is_spent=0" + asset_filter, [device_address], function(rows){
-            if (rows.length === 0)
-                return callbacks.ifNoFundedSharedAddress();
-            rows.forEach(function(row){
-                sendSharedAddressToPeer(device_address, row.shared_address, function(err){
-                    if (err)
-                        return console.log(err)
-                    console.log("Definition for " + row.shared_address + " will be sent to " + device_address);
-                });
-            });
-            return callbacks.ifFundedSharedAddress(rows.length);
-        });
+	var asset_filter = !asset || asset == "base" ? " AND outputs.asset IS NULL " : " AND outputs.asset='"+asset+"'";
+	db.query(
+		"SELECT DISTINCT shared_address FROM shared_address_signing_paths CROSS JOIN outputs ON shared_address_signing_paths.shared_address=outputs.address\n\
+		 WHERE device_address=? AND outputs.is_spent=0" + asset_filter, [device_address], function(rows){
+			if (rows.length === 0)
+				return callbacks.ifNoFundedSharedAddress();
+			rows.forEach(function(row){
+				sendSharedAddressToPeer(device_address, row.shared_address, function(err){
+					if (err)
+						return console.log(err)
+					console.log("Definition for " + row.shared_address + " will be sent to " + device_address);
+				});
+			});
+				return callbacks.ifFundedSharedAddress(rows.length);
+	});
 }
 
 // read shared address definition and signing paths then send them to peer
 function sendSharedAddressToPeer(device_address, shared_address, handle){
-    var arrDefinition;
-    var assocSignersByPath={};
-    async.series([
-            function(cb){
-                db.query("SELECT definition FROM shared_addresses WHERE shared_address=?", [shared_address], function(rows){
-                    if (!rows[0])
-                        return cb("Definition not found for " + shared_address);
-                    arrDefinition = JSON.parse(rows[0].definition);
-                    return cb(null);
-                });
-            },
-            function(cb){
-                db.query("SELECT signing_path,address,member_signing_path,device_address FROM shared_address_signing_paths WHERE shared_address=?", [shared_address], function(rows){
-                    if (rows.length<2)
-                        return cb("Less than 2 signing paths found for " + shared_address);
-                    rows.forEach(function(row){
-                        assocSignersByPath[row.signing_path] = {address: row.address, member_signing_path: row.member_signing_path, device_address: row.device_address};
-                    });
-                    return cb(null);
-                });
-            }
-        ],
-        function(err){
-            if (err)
-                return handle(err);
-            sendNewSharedAddress(device_address, shared_address, arrDefinition, assocSignersByPath);
-            return handle(null);
-        });
+	var arrDefinition;
+	var assocSignersByPath={};
+	async.series([
+		function(cb){
+			db.query("SELECT definition FROM shared_addresses WHERE shared_address=?", [shared_address], function(rows){
+				if (!rows[0])
+					return cb("Definition not found for " + shared_address);
+				arrDefinition = JSON.parse(rows[0].definition);
+				return cb(null);
+			});
+		},
+		function(cb){
+			db.query("SELECT signing_path,address,member_signing_path,device_address FROM shared_address_signing_paths WHERE shared_address=?", [shared_address], function(rows){
+				if (rows.length<2)
+					return cb("Less than 2 signing paths found for " + shared_address);
+				rows.forEach(function(row){
+					assocSignersByPath[row.signing_path] = {address: row.address, member_signing_path: row.member_signing_path, device_address: row.device_address};
+				});
+				return cb(null);
+			});
+		}
+	],
+	function(err){
+		if (err)
+			return handle(err);
+		sendNewSharedAddress(device_address, shared_address, arrDefinition, assocSignersByPath);
+		return handle(null);
+	});
 }
 
 
@@ -543,15 +543,26 @@ function readSharedAddressCosigners(shared_address, handleCosigners){
 
 // returns list of payment addresses of peers
 function readSharedAddressPeerAddresses(shared_address, handlePeerAddresses){
+	readSharedAddressPeers(shared_address, function(assocNamesByAddress){
+		handlePeerAddresses(Object.keys(assocNamesByAddress));
+	});
+}
+
+// returns assoc array: peer name by address
+function readSharedAddressPeers(shared_address, handlePeers){
 	db.query(
-		"SELECT DISTINCT address FROM shared_address_signing_paths WHERE shared_address=? AND device_address!=?",
+		"SELECT DISTINCT address, name FROM shared_address_signing_paths LEFT JOIN correspondent_devices USING(device_address) \n\
+		WHERE shared_address=? AND shared_address_signing_paths.device_address!=?",
 		[shared_address, device.getMyDeviceAddress()],
 		function(rows){
 			// no problem if no peers found: the peer can be part of our multisig address and his device address will be rewritten to ours
 		//	if (rows.length === 0)
 		//		throw Error("no peers found for shared address "+shared_address);
-			var arrPeerAddresses = rows.map(function(row){ return row.address; });
-			handlePeerAddresses(arrPeerAddresses);
+			var assocNamesByAddress = {};
+			rows.forEach(function(row){
+				assocNamesByAddress[row.address] = row.name || 'unknown peer';
+			});
+			handlePeers(assocNamesByAddress);
 		}
 	);
 }
@@ -588,6 +599,7 @@ exports.handleNewSharedAddress = handleNewSharedAddress;
 exports.forwardPrivateChainsToOtherMembersOfAddresses = forwardPrivateChainsToOtherMembersOfAddresses;
 exports.readSharedAddressCosigners = readSharedAddressCosigners;
 exports.readSharedAddressPeerAddresses = readSharedAddressPeerAddresses;
+exports.readSharedAddressPeers = readSharedAddressPeers;
 exports.getPeerAddressesFromSigners = getPeerAddressesFromSigners;
 exports.readSharedAddressDefinition = readSharedAddressDefinition;
 exports.determineIfHasMerkle = determineIfHasMerkle;
